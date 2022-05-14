@@ -5,7 +5,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "reqwapy_core"
+name = "reqwapy"
 crate-type = ["cdylib"]
 
 [dependencies]
