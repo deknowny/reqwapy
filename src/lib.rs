@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 
 pub mod client;
 pub mod response;
+pub mod conversion;
 
 
 #[pymodule]

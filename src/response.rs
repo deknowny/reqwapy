@@ -5,6 +5,8 @@ use pyo3::exceptions::PyKeyError;
 use reqwest;
 use serde_json;
 
+use crate::conversion;
+
 
 fn serde_value_to_pyobject(value: &serde_json::Value, py: Python) -> PyObject {
     match value {
@@ -61,11 +63,11 @@ impl TextResponse {
 
 #[pyclass]
 pub struct JSONResponse {
-    content: serde_json::Value,
+    content: conversion::PySerde,
 }
 
 impl JSONResponse {
-    pub fn new(content: serde_json::Value) -> Self {
+    pub fn new(content: conversion::PySerde) -> Self {
         JSONResponse { content }
     }
 }
@@ -74,17 +76,27 @@ impl JSONResponse {
 
 #[pymethods]
 impl JSONResponse {
-    fn select(&self, py: Python, fields: Vec<&str>) -> PyResult<PyObject> {
+    #[args(fields = "*")]
+    fn select(&self, py: Python, fields: Vec<conversion::PyIndex>) -> PyResult<PyObject> {
         let mut current_value = &self.content;
         for field in fields {
-            match current_value.get(field) {
-                None => return Err(
-                    PyKeyError::new_err(format!("No such key: {}", field))
-                ),
-                Some(new_val) => current_value = new_val
+            match current_value {
+                conversion::PySerde::Object(object) => {
+                    match field {
+                        conversion::PyIndex::Int(_) => panic!("It's an object, not an array"),
+                        conversion::PyIndex::Str(index) => current_value = object.get(index.as_str()).unwrap()
+                    }
+                },
+                conversion::PySerde::Array(array) => {
+                    match field {
+                        conversion::PyIndex::Str(_) => panic!("It's an array, not an object"),
+                        conversion::PyIndex::Int(index) => current_value = array.get(index).unwrap()
+                    }
+                },
+                _ => panic!("It's not subscribtaleacdascda")
             };
         }
-        Ok(serde_value_to_pyobject(current_value, py))
+        Ok(Python::with_gil(|py| current_value.to_object(py)))
     }
 }
 
