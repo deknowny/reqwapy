@@ -1,3 +1,6 @@
+# Pytets benchmark cache
+.benchmarks
+
 # Maturin storage
 default.profraw
 
