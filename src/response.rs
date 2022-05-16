@@ -1,37 +1,10 @@
 use std::collections::HashMap;
 
 use pyo3::prelude::*;
-use pyo3::exceptions::PyKeyError;
+use pyo3::exceptions::{PyKeyError, PyIndexError, PyTypeError};
 use reqwest;
-use serde_json;
 
 use crate::conversion;
-
-
-fn serde_value_to_pyobject(value: &serde_json::Value, py: Python) -> PyObject {
-    match value {
-        serde_json::Value::Null => Option::<isize>::None.to_object(py),
-        serde_json::Value::Bool(inner) => inner.to_object(py),
-        serde_json::Value::String(inner) => inner.to_object(py),
-        serde_json::Value::Number(inner) => match inner.is_f64() {
-            true => inner.as_f64().to_object(py),
-            false => inner.as_i64().to_object(py)
-        },
-        serde_json::Value::Array(inner) =>
-            inner
-            .iter()
-            .map(|x| serde_value_to_pyobject(x, py))
-            .collect::<Vec<_>>()
-            .to_object(py),
-        serde_json::Value::Object(inner) => {
-            let mut new_holder = HashMap::new();
-            for (key, elem) in inner {
-                new_holder.insert(key, serde_value_to_pyobject(elem, py));
-            }
-            new_holder.to_object(py)
-        }
-    }
-}
 
 
 #[pyclass]
@@ -76,24 +49,61 @@ impl JSONResponse {
 
 #[pymethods]
 impl JSONResponse {
+    // TODO: refactor
     #[args(fields = "*")]
-    fn select(&self, py: Python, fields: Vec<conversion::PyIndex>) -> PyResult<PyObject> {
+    fn select(&self, fields: Vec<conversion::PyIndex>) -> PyResult<PyObject> {
         let mut current_value = &self.content;
         for field in fields {
             match current_value {
                 conversion::PySerde::Object(object) => {
                     match field {
-                        conversion::PyIndex::Int(_) => panic!("It's an object, not an array"),
-                        conversion::PyIndex::Str(index) => current_value = object.get(index.as_str()).unwrap()
+                        conversion::PyIndex::Int(index) => return Err(
+                            PyTypeError::new_err(
+                                format!(
+                                    r#"Cannot access the index ({})
+                                    because accessible is an object with string keys"#,
+                                    index
+                                )
+                            )
+                        ),
+                        conversion::PyIndex::Str(index) =>
+                            match object.get(index.as_str()) {
+                                None => return Err(
+                                    PyKeyError::new_err(
+                                        format!("No such key: {}", &index)
+                                    )
+                                ),
+                                Some(new_value) => current_value = new_value
+                            }
                     }
                 },
                 conversion::PySerde::Array(array) => {
                     match field {
-                        conversion::PyIndex::Str(_) => panic!("It's an array, not an object"),
-                        conversion::PyIndex::Int(index) => current_value = array.get(index).unwrap()
+                        conversion::PyIndex::Str(index) => return Err(
+                            PyTypeError::new_err(
+                                format!(
+                                    r#"Cannot access the key ({})
+                                    because accessible is an array"#,
+                                    index
+                                )
+                            )
+                        ),
+                        conversion::PyIndex::Int(index) => match array.get(index) {
+                            None => return Err(
+                                PyIndexError::new_err(
+                                    format!(
+                                        "Index out of length: {} (length is {})",
+                                        &index, array.len()
+                                    )
+                                )
+                            ),
+                            Some(new_value) => current_value = new_value
+                        }
                     }
                 },
-                _ => panic!("It's not subscribtaleacdascda")
+                _ => return Err(
+                    PyTypeError::new_err("Accessible is not subscriptable")
+                )
             };
         }
         Ok(Python::with_gil(|py| current_value.to_object(py)))

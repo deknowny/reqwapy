@@ -55,9 +55,6 @@ impl Client {
         before_json_parsed_cb: Option<PyObject>,
         py: Python<'rt>
     ) -> PyResult<&'rt PyAny> {
-
-        dbg!(&json);
-
         let client = self.rw_client.clone();
         let full_url = self.build_url(url);
         let http_method = match reqwest::Method::from_bytes(method.as_bytes()) {
@@ -89,6 +86,7 @@ impl Client {
                 })?;
                 fut.await?;
             }
+
             let json: conversion::PySerde = response.json().await.unwrap();
 
             Ok(Python::with_gil(|py| response::JSONResponse::new(json).into_py(py)))
