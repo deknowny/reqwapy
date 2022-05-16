@@ -11,7 +11,7 @@ LOCAL_PY = $(EXEC_BASE)/python
 LOCAL_PIP = $(EXEC_BASE)/pip
 
 # Maturin package manager executable
-MATURIN = $(EXEC_BASE)/python -m maturin
+MATURIN = $(EXEC_BASE)/maturin
 
 # Pytest executable
 PYTEST = $(EXEC_BASE)/pytest
@@ -19,9 +19,13 @@ PYTEST = $(EXEC_BASE)/pytest
 # The first command that always should be executed
 # when you clone the source
 setup:
+	rm -rf .venv && \
+	$(GLOBAL_PY) -m pip install --upgrade pip && \
 	$(GLOBAL_PY) -m venv .venv && \
-	$(LOCAL_PIP) install .
+	$(LOCAL_PIP) install --upgrade pip . && \
 
+enable-enviroment:
+	. $(EXEC_BASE)/activate
 
 install-code-fix:
 	$(LOCAL_PIP) install ".[code-fix]"
@@ -29,29 +33,35 @@ install-code-fix:
 install-test:
 	$(LOCAL_PIP) install ".[test]"
 
+install-build:
+	$(LOCAL_PIP) install ".[build]"
+
 install-all:
-	install-code-fix && install-test
+	$(MAKE) install-code-fix && $(MAKE) install-test && $(MAKE) install-build
 
 build-debug:
-	$(MATURIN) develop
+	$(MAKE) enable-enviroment && $(MATURIN) develop $(ARGS)
 
 build-prod:
-	$(MATURIN) build
+	$(MAKE) enable-enviroment && $(MATURIN) build
 
-work-check:
-	build-debug && $(LOCAL_PY) .drafts/check.py
+work-check: build-debug
+	$(LOCAL_PY) .drafts/check.py
 
 format:
-	$(EXEC_BASE)/black reqwapy && \
+	$(LOCAL_PY) -m black reqwapy && \
 	git add -u && \
-	$(EXEC_BASE)/isort reqwapy && \
+	$(LOCAL_PY) -m isort reqwapy && \
 	git add -u && \
-	$(EXEC_BASE)/autoflake \
+	$(LOCAL_PY) -m autoflake \
 		--ignore-init-module-imports \
 		--remove-unused-variables \
 		--recursive \
 		--in-place reqwapy tests && \
 	git add -u
+
+benchmark:
+	$(PYTEST) benchmarks $(ARGS) --benchmark-max-time=10
 
 # Run tests locally
 test:
@@ -59,7 +69,7 @@ test:
 
 # Tests command for CI with .coveragerc report
 test-ci:
-	$(EXEC_BASE)/coverage run --source=reqwapy -m pytest tests
+	$(LOCAL_PY) -m coverage run --source=reqwapy -m pytest tests
 
 # Serve coverage report
 serve-cov:
@@ -67,11 +77,11 @@ serve-cov:
 
 # Run hot-reloaded docs server
 serve-docs:
-	$(EXEC_BASE)/mkdocs serve
+	$(LOCAL_PY) -m mkdocs serve
 
 # Deploy docs command
 deploy-docs:
-	$(poetry_exec) run mike deploy --push --update-aliases 0.1 latest -b gh-pages
+	$(LOCAL_PY) -m mike deploy --push --update-aliases 0.1 latest -b gh-pages
 
 # Run mypy checking
 type-check:
