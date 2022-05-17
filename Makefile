@@ -24,7 +24,7 @@ setup:
 	$(GLOBAL_PY) -m venv .venv && \
 	$(LOCAL_PIP) install --upgrade pip . && \
 
-enable-enviroment:
+enable-environment:
 	. $(EXEC_BASE)/activate
 
 install-code-fix:
@@ -39,11 +39,11 @@ install-build:
 install-all:
 	$(MAKE) install-code-fix && $(MAKE) install-test && $(MAKE) install-build
 
-build-debug:
-	$(MAKE) enable-enviroment && $(MATURIN) develop $(ARGS)
+develop-debug: enable-environment
+	$(MATURIN) develop $(ARGS)
 
-build-prod:
-	$(MAKE) enable-enviroment && $(MATURIN) build
+develop-release: enable-environment
+	$(MATURIN) build
 
 work-check: build-debug
 	$(LOCAL_PY) .drafts/check.py
