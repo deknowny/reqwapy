@@ -48,3 +48,7 @@ pub enum PyIndex {
     Int(usize),
     Str(String)
 }
+
+pub enum TreatResponseAs {
+    Json, Text
+}

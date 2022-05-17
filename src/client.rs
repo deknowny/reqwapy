@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use pyo3::prelude::*;
+use pyo3::exceptions::{PyValueError};
 use reqwest;
 
 use crate::response;
@@ -35,14 +36,9 @@ impl Client {
     fn new(
         _py: Python,
         base_url: Option<String>
-    ) -> PyResult<Self> {
+    ) -> Self {
         let rw_client = reqwest::Client::new();
-        Ok(
-            Client {
-                rw_client,
-                base_url,
-            }
-        )
+        Client { rw_client, base_url }
     }
 
     fn request_json<'rt>(
@@ -52,14 +48,20 @@ impl Client {
         query: Option<HashMap<String, conversion::PySerde>>,
         json: Option<HashMap<String, conversion::PySerde>>,
         data: Option<HashMap<String, conversion::PySerde>>,
-        before_json_parsed_cb: Option<PyObject>,
+        before_body_reading_cb: Option<PyObject>,
+        response_treat: &str,
         py: Python<'rt>
     ) -> PyResult<&'rt PyAny> {
         let client = self.rw_client.clone();
         let full_url = self.build_url(url);
         let http_method = match reqwest::Method::from_bytes(method.as_bytes()) {
             Ok(parsed_method) => parsed_method,
-            _ => panic!("Error occured while parsing")
+            Err(_) => return Err(PyValueError::new_err("Invalid HTTP method"))
+        };
+        let response_treat_variant = match response_treat {
+            "JSON" => conversion::TreatResponseAs::Json,
+            "Text" => conversion::TreatResponseAs::Text,
+            _ => return Err(PyValueError::new_err("Such response_treat is not available"))
         };
 
         pyo3_asyncio::tokio::future_into_py(py, async move {
@@ -77,7 +79,7 @@ impl Client {
 
             let response = request.send().await.unwrap();
 
-            if let Some(cb) = before_json_parsed_cb {
+            if let Some(cb) = before_body_reading_cb {
                 let fut = Python::with_gil(|py| {
                     let py_response = response::RawResponse::new(&response);
                     let nonpy_awaitable = cb.call1(py, (py_response,))?;
@@ -87,9 +89,17 @@ impl Client {
                 fut.await?;
             }
 
-            let json: conversion::PySerde = response.json().await.unwrap();
+            match response_treat_variant {
+                conversion::TreatResponseAs::Json => {
+                    let json: conversion::PySerde = response.json().await.unwrap();
+                    Ok(Python::with_gil(|py| response::JSONResponse { content: json }.into_py(py)))
+                },
+                conversion::TreatResponseAs::Text => {
+                    let text = response.text().await.unwrap();
+                    Ok(Python::with_gil(|py| response::TextResponse { text }.into_py(py)))
+                }
+            }
 
-            Ok(Python::with_gil(|py| response::JSONResponse::new(json).into_py(py)))
         })
     }
 }

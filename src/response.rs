@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use pyo3::prelude::*;
 use pyo3::exceptions::{PyKeyError, PyIndexError, PyTypeError};
 use reqwest;
@@ -24,27 +22,14 @@ impl RawResponse {
 #[pyclass]
 pub struct TextResponse {
     #[pyo3(get)]
-    text: String
-}
-
-impl TextResponse {
-    pub fn new(text: String) -> Self {
-        TextResponse { text }
-    }
+    pub text: String
 }
 
 
 #[pyclass]
 pub struct JSONResponse {
-    content: conversion::PySerde,
+    pub content: conversion::PySerde,
 }
-
-impl JSONResponse {
-    pub fn new(content: conversion::PySerde) -> Self {
-        JSONResponse { content }
-    }
-}
-
 
 
 #[pymethods]
