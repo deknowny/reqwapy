@@ -45,11 +45,11 @@ impl Client {
         &self,
         method: &str,
         url: &str,
+        response_treat: &str,
         query: Option<HashMap<String, conversion::PySerde>>,
         json: Option<HashMap<String, conversion::PySerde>>,
         data: Option<HashMap<String, conversion::PySerde>>,
         before_body_reading_cb: Option<PyObject>,
-        response_treat: &str,
         py: Python<'rt>
     ) -> PyResult<&'rt PyAny> {
         let client = self.rw_client.clone();
