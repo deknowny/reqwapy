@@ -45,7 +45,7 @@ develop-debug: enable-environment
 develop-release: enable-environment
 	$(MATURIN) build
 
-work-check: build-debug
+work-check: develop-debug
 	$(LOCAL_PY) .drafts/check.py
 
 format:
