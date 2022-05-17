@@ -78,11 +78,13 @@ impl Client {
             }
 
             let response = request.send().await.unwrap();
+            let raw_response = response::RawResponse::new(&response)?;
+
 
             if let Some(cb) = before_body_reading_cb {
                 let fut = Python::with_gil(|py| {
-                    let py_response = response::RawResponse::new(&response);
-                    let nonpy_awaitable = cb.call1(py, (py_response,))?;
+                    let py_raw_response = raw_response.clone().into_py(py);
+                    let nonpy_awaitable = cb.call1(py, (py_raw_response,))?;
                     let awaitable = nonpy_awaitable.as_ref(py);
                     pyo3_asyncio::tokio::into_future(awaitable)
                 })?;
@@ -92,11 +94,11 @@ impl Client {
             match response_treat_variant {
                 conversion::TreatResponseAs::Json => {
                     let json: conversion::PySerde = response.json().await.unwrap();
-                    Ok(Python::with_gil(|py| response::JSONResponse { content: json }.into_py(py)))
+                    Ok(Python::with_gil(|py| response::JSONResponse { raw_response, content: json }.into_py(py)))
                 },
                 conversion::TreatResponseAs::Text => {
                     let text = response.text().await.unwrap();
-                    Ok(Python::with_gil(|py| response::TextResponse { text }.into_py(py)))
+                    Ok(Python::with_gil(|py| response::TextResponse { raw_response, text }.into_py(py)))
                 }
             }
 

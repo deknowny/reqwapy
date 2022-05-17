@@ -1,34 +1,66 @@
+use std::collections::HashMap;
+
 use pyo3::prelude::*;
 use pyo3::exceptions::{PyKeyError, PyIndexError, PyTypeError};
 use reqwest;
 
 use crate::conversion;
 
-
+#[derive(Clone)]
 #[pyclass]
 pub struct RawResponse {
     #[pyo3(get)]
-    status: u16
+    status: u16,
+
+    #[pyo3(get)]
+    version: String,
+
+    #[pyo3(get)]
+    final_url: String,
+
+    #[pyo3(get)]
+    headers: HashMap<String, String>
 }
 
 impl RawResponse {
-    pub fn new(response: &reqwest::Response) -> Self {
-        RawResponse {
-            status: response.status().as_u16()
-        }
+    pub fn new(response: &reqwest::Response) -> PyResult<Self> {
+        Ok(RawResponse {
+            status: response.status().as_u16(),
+            version: String::from(match response.version() {
+                reqwest::Version::HTTP_09 => "HTTP/0.9",
+                reqwest::Version::HTTP_10 => "HTTP/1.0",
+                reqwest::Version::HTTP_11 => "HTTP/1.1",
+                reqwest::Version::HTTP_2=> "HTTP/2.0",
+                reqwest::Version::HTTP_3 => "HTTP/3.0",
+                _ => unreachable!(),
+            }),
+            final_url: String::from(response.url().as_str()),
+            headers: {
+                let mut py_headers = HashMap::new();
+                for (key, value) in response.headers().iter() {
+                    py_headers.insert(
+                        String::from(key.as_str()),
+                        String::from(value.to_str().unwrap())
+                    );
+                }
+                py_headers
+            },
+        })
     }
 }
 
 #[pyclass]
 pub struct TextResponse {
     #[pyo3(get)]
-    pub text: String
+    pub text: String,
+    pub raw_response: RawResponse,
 }
 
 
 #[pyclass]
 pub struct JSONResponse {
     pub content: conversion::PySerde,
+    pub raw_response: RawResponse,
 }
 
 
