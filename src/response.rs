@@ -133,6 +133,7 @@ pub fn init_module(py: Python, parent_module: &PyModule) -> PyResult<()> {
     let submod = PyModule::new(py, "response")?;
     submod.add_class::<RawResponse>()?;
     submod.add_class::<TextResponse>()?;
+    submod.add_class::<JSONResponse>()?;
     parent_module.add_submodule(submod)?;
     Ok(())
 }

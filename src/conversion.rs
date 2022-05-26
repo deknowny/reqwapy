@@ -30,7 +30,7 @@ impl ToPyObject for PySerde {
                     new_holder.push(item.to_object(py));
                 }
                 new_holder.to_object(py)
-            }
+            },
             Self::Object(inner) => {
                 let mut new_holder = HashMap::new();
                 for (key, elem) in inner {
@@ -49,6 +49,8 @@ pub enum PyIndex {
     Str(String)
 }
 
+#[derive(Clone)]
+#[pyclass]
 pub enum TreatResponseAs {
-    Json, Text
+    JSON, TEXT
 }

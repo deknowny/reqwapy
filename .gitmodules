@@ -1,0 +1,4 @@
+[submodule "ralipyard"]
+	path = vendor/ralipyard
+	url = https://github.com/deknowny/ralipyard
+	branch = v0.1.1

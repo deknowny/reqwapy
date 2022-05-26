@@ -638,6 +638,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "raliguard"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c4edea9aa802ec3434df87b4fd1364e46b6f47c9f702f51387ecd66074a9e8c"
+
+[[package]]
+name = "ralipyard"
+version = "0.1.0"
+dependencies = [
+ "pyo3",
+ "raliguard",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -661,6 +675,8 @@ version = "0.1.0"
 dependencies = [
  "pyo3",
  "pyo3-asyncio",
+ "raliguard",
+ "ralipyard",
  "reqwest",
  "serde",
  "serde_json",

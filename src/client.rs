@@ -35,17 +35,17 @@ impl Client {
     #[new]
     fn new(
         _py: Python,
-        base_url: Option<String>
+        base_url: Option<String>,
     ) -> Self {
         let rw_client = reqwest::Client::new();
         Client { rw_client, base_url }
     }
 
-    fn request_json<'rt>(
+    fn request<'rt>(
         &self,
         method: &str,
         url: &str,
-        response_treat: &str,
+        response_treat: conversion::TreatResponseAs,
         query: Option<HashMap<String, conversion::PySerde>>,
         json: Option<HashMap<String, conversion::PySerde>>,
         data: Option<HashMap<String, conversion::PySerde>>,
@@ -57,11 +57,6 @@ impl Client {
         let http_method = match reqwest::Method::from_bytes(method.as_bytes()) {
             Ok(parsed_method) => parsed_method,
             Err(_) => return Err(PyValueError::new_err("Invalid HTTP method"))
-        };
-        let response_treat_variant = match response_treat {
-            "JSON" => conversion::TreatResponseAs::Json,
-            "Text" => conversion::TreatResponseAs::Text,
-            _ => return Err(PyValueError::new_err("Such response_treat is not available"))
         };
 
         pyo3_asyncio::tokio::future_into_py(py, async move {
@@ -77,6 +72,7 @@ impl Client {
                 request = request.query(&passed_query);
             }
 
+
             let response = request.send().await.unwrap();
             let raw_response = response::RawResponse::new(&response)?;
 
@@ -91,12 +87,12 @@ impl Client {
                 fut.await?;
             }
 
-            match response_treat_variant {
-                conversion::TreatResponseAs::Json => {
+            match response_treat {
+                conversion::TreatResponseAs::JSON => {
                     let json: conversion::PySerde = response.json().await.unwrap();
                     Ok(Python::with_gil(|py| response::JSONResponse { raw_response, content: json }.into_py(py)))
                 },
-                conversion::TreatResponseAs::Text => {
+                conversion::TreatResponseAs::TEXT => {
                     let text = response.text().await.unwrap();
                     Ok(Python::with_gil(|py| response::TextResponse { raw_response, text }.into_py(py)))
                 }
@@ -109,6 +105,7 @@ impl Client {
 pub fn init_module(py: Python, parent_module: &PyModule) -> PyResult<()> {
     let submod = PyModule::new(py, "client")?;
     submod.add_class::<Client>()?;
+    submod.add_class::<conversion::TreatResponseAs>()?;
     parent_module.add_submodule(submod)?;
     Ok(())
 }

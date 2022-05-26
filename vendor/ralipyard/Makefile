@@ -22,7 +22,7 @@ setup:
 	rm -rf .venv && \
 	$(GLOBAL_PY) -m pip install --upgrade pip && \
 	$(GLOBAL_PY) -m venv .venv && \
-	$(LOCAL_PIP) install --upgrade pip .
+	$(LOCAL_PIP) install --upgrade pip maturin
 
 enable-environment:
 	. $(EXEC_BASE)/activate
@@ -48,41 +48,5 @@ develop-release: enable-environment
 work-check: develop-debug
 	$(LOCAL_PY) .drafts/check.py
 
-format:
-	$(LOCAL_PY) -m black reqwapy && \
-	git add -u && \
-	$(LOCAL_PY) -m isort reqwapy && \
-	git add -u && \
-	$(LOCAL_PY) -m autoflake \
-		--ignore-init-module-imports \
-		--remove-unused-variables \
-		--recursive \
-		--in-place reqwapy tests && \
-	git add -u
-
-benchmark:
-	$(PYTEST) benchmarks $(ARGS) --benchmark-max-time=10
-
-# Run tests locally
 test:
-	$(PYTEST) tests --cov=reqwapy --cov-report=html
-
-# Tests command for CI with .coveragerc report
-test-ci:
-	$(LOCAL_PY) -m coverage run --source=reqwapy -m pytest tests
-
-# Serve coverage report
-serve-cov:
-	$(LOCAL_PY) -m http.server -d htmlcov -b 127.0.0.1
-
-# Run hot-reloaded docs server
-serve-docs:
-	$(LOCAL_PY) -m mkdocs serve
-
-# Deploy docs command
-deploy-docs:
-	$(LOCAL_PY) -m mike deploy --push --update-aliases 0.1 latest -b gh-pages
-
-# Run mypy checking
-type-check:
-	$(EXEC_BASE)/mypy run
+	$(PYTEST)
